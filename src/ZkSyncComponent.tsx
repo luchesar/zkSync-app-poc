@@ -2,11 +2,15 @@ import React, { useState, useEffect, useRef } from "react";
 import axios, { CancelToken } from "axios";
 import {CheckoutManager} from 'zksync-checkout'
 // import {zkSyncBatchCheckout} from 'zksync-checkout'
+type TokenLike = string;
 
 
 export default function ZkSyncComponent() {
   const [text, setText] = useState("");
   const componentIsMounted = useRef(true);
+
+  type TokenLike = string;
+
 
   useEffect(() => {
     // each useEffect can return a cleanup function
@@ -39,8 +43,8 @@ export default function ZkSyncComponent() {
         const manager = new CheckoutManager('rinkeby');
 
         // TODO Recalculate token value (backend endpoint)
-        // axios.get('https://sprintcheckout-mvp.herokuapp.com/checkout/v1/tokens/rates?layer=' + layer
-        axios.get('http://localhost:8080/checkout/v1/tokens/rates?layer=' + layer
+        axios.get('https://sprintcheckout-mvp.herokuapp.com/checkout/v1/tokens/rates?layer=' + layer
+        //axios.get('http://localhost:8080/checkout/v1/tokens/rates?layer=' + layer
         + '&amount=' + amount + '&storeCurrency=' + storeCurrency + '&site_url=' + siteUrl)
         .then(res => {
           const tokenRates = res.data;
@@ -53,31 +57,58 @@ export default function ZkSyncComponent() {
         //   console.log(res.data);
         // })
 
-
-
         // TODO Split payment (merchant, spc_fee, zksync_fee)
-        //  - get zksync estimated fee
+        //  - get zksync estimated fee (DONE)
         //  - calculate spc_fee (0.3 % of total amount)
         //  - merchant = total_amount - spc_fee - zksync_fee (corner case - unlock account)
 
         // Create 2 zksync transactions
+        const totalAmountTransaction1 = {
+          // from: "0xCE8a3215C76a645331eb58ce54E12DB6cD0cA73E",
+          to: "0xEDC3FB8eC1Bb8b10c956a67Ab783207cB6FD1c38",
+          token: token as string,
+          amount: amount as string,
+        };
+
+        const totalAmountTransaction2 = {
+          // from: "0xCE8a3215C76a645331eb58ce54E12DB6cD0cA73E",
+          to: "0xEDC3FB8eC1Bb8b10c956a67Ab783207cB6FD1c38",
+          token: token as string,
+          amount: amount as string,
+        };
+
+        const feeTransactions = [totalAmountTransaction1, totalAmountTransaction2];
+
+        //Estimating transactions fee
+        const estimatedFee = await manager.estimateBatchFee(feeTransactions, token as string);
+        console.log("ESTIMATED FEE: " + estimatedFee);
+
+        // - calculate spc_fee (0.3 % of total amount)
+        let numAmount = Number(amount)
+        const spcFee : number = numAmount * 0.003;
+        const merchantAmount : number = +numAmount - +spcFee - +estimatedFee;
+
+        let strMerchantAmount = String(merchantAmount)
+        // TODO get addresses from backend to use in the next transactions (merchant and sprintcheckout)
 
         const tx1 = {
           // from: "0xCE8a3215C76a645331eb58ce54E12DB6cD0cA73E",
           to: "0xEDC3FB8eC1Bb8b10c956a67Ab783207cB6FD1c38",
-          token: "USDT",
-          amount: "59640000",
+          token: token as string,
+          amount: strMerchantAmount as string,
         };
 
+        let strSpcFee = String(spcFee)
         const tx2 = {
           // from: "0xCE8a3215C76a645331eb58ce54E12DB6cD0cA73E",
           to: "0xB401938D098e95ee1987b4E2674c8cd523afcc32",
           token: "USDT",
-          amount: "150000",
+          amount: strSpcFee as string,
         };
 
         const transactions = [tx1, tx2];
-        const hashes = await manager.zkSyncBatchCheckout(transactions,"USDT");
+
+        const hashes = await manager.zkSyncBatchCheckout(transactions, token as string);
         const receipts = await manager.wait(hashes, 'COMMIT');
         console.log(receipts);
 
@@ -86,7 +117,7 @@ export default function ZkSyncComponent() {
         // Render tx results and redirect (timeout or button) to woocommerce
         // Navigate to ORDER COMPLETE page in woocommerce passing the TX Receipt ID/Code (Callback)
         // Redirect with this params -> https://gripmonkeys.co.uk/checkout/order-received/7733/?key=wc_order_LLICPCA9WYf3s&spc_ref=AHD7$KD
-        window.location.replace('https://gripmonkeys.co.uk/checkout/order-received/7733/?key=wc_order_LLICPCA9WYf3s&spc_ref=AHD7$KD')
+        window.location.replace(siteUrl + '/checkout/order-received/' + orderId + '/?key=' + woocommerceReference + '&spc_ref=' + 'FOO_CONST')
 
 
 
