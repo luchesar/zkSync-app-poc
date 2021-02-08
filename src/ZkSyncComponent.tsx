@@ -29,7 +29,7 @@ export default function ZkSyncComponent() {
     const layer = params.get('layer');
     const token = params.get('token');
     const amount = params.get('amount');
-    const storeCurrency = params.get('storeCurrency');
+    const storeCurrency = params.get('store_currency');
     const siteUrl = params.get('site_url');
     console.log("URL params: " + orderId + " - " + woocommerceReference + " - " + layer + " - " + token + " - " + amount + " - " + storeCurrency + " - " + siteUrl);
     // const cancelTokenSource = CancelToken.source();
@@ -42,14 +42,27 @@ export default function ZkSyncComponent() {
         console.log("Inside process transaction async call");
         const manager = new CheckoutManager('rinkeby');
 
+        let tokenAmountToPay : number;
+
         // TODO Recalculate token value (backend endpoint)
-        axios.get('https://sprintcheckout-mvp.herokuapp.com/checkout/v1/tokens/rates?layer=' + layer
-        //axios.get('http://localhost:8080/checkout/v1/tokens/rates?layer=' + layer
-        + '&amount=' + amount + '&storeCurrency=' + storeCurrency + '&site_url=' + siteUrl)
+        //axios.get('https://sprintcheckout-mvp.herokuapp.com/checkout/v1/tokens/rates?layer=' + layer
+        axios.get('http://localhost:8080/checkout/v1/tokens/rates?layer=' + layer
+        + '&amount=' + amount + '&store_currency=' + storeCurrency + '&site_url=' + siteUrl)
         .then(res => {
-          const tokenRates = res.data;
-          console.log(tokenRates)
-        }).catch(err => console.log("Axios err: ", err))
+          // tokenRates = JSON.parse(res.data) as ITokenRates;
+          console.log(res.data)
+          var tokenValue = Object.entries(res.data.tokenPrices).filter( function ([key, value]) {
+            if(key == token?.toLowerCase()) {
+              return value;
+            }
+          });
+          console.log("Amount of "+ amount + " " + storeCurrency + " equals to " + tokenValue[0][1] + " " + token)
+          tokenAmountToPay = tokenValue[0][1] as number
+
+        }).then(res => {
+
+        }
+        ).catch(err => console.log("Axios err: ", err))
 
         // axios.post(`https://jsonplaceholder.typicode.com/users`, { user })
         // .then(res => {
@@ -90,6 +103,13 @@ export default function ZkSyncComponent() {
 
         let strMerchantAmount = String(merchantAmount)
         // TODO get addresses from backend to use in the next transactions (merchant and sprintcheckout)
+        axios.get('http://localhost:8080/checkout/v1/merchant_address?layer=' + layer + '&site_url=' + siteUrl)
+        .then(res => {
+          console.log("Merchant address (in layer " + layer + ") is " + res.data)
+
+          let publicAddress = res.data;
+
+        }).catch(err => console.log("Axios err: ", err))
 
         const tx1 = {
           // from: "0xCE8a3215C76a645331eb58ce54E12DB6cD0cA73E",
