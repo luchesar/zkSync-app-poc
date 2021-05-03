@@ -4,7 +4,6 @@ import {CheckoutManager} from 'zksync-checkout'
 // import {zkSyncBatchCheckout} from 'zksync-checkout'
 type TokenLike = string;
 
-
 export default function ZkSyncComponent() {
   const [text, setText] = useState("");
   const componentIsMounted = useRef(true);
@@ -33,6 +32,12 @@ export default function ZkSyncComponent() {
     const siteUrl = params.get('site_url');
     console.log("URL params: " + orderId + " - " + woocommerceReference + " - " + layer + " - " + token + " - " + amount + " - " + storeCurrency + " - " + siteUrl);
     // const cancelTokenSource = CancelToken.source();
+
+      const wooCommerceKeys = `ck_8ec3f9dc6943e5d99b7a9e09eb46fef5670dd6cf:cs_c9134afb6072ecbf86395a08748cc238830137d0`;
+      const encodedToken = Buffer.from(wooCommerceKeys).toString('base64');
+      const headers = { 'Authorization': 'Basic '+ encodedToken };
+      const putData = { status: 'completed'};
+      const ref = axios.put('https://a.sprintgrowth.co.uk/wp-json/wc/v3/orders/' + orderId, putData, { headers });
 
       async function processTransaction() {
 
@@ -96,24 +101,35 @@ export default function ZkSyncComponent() {
         const estimatedFee = await manager.estimateBatchFee(feeTransactions, token as string);
         console.log("ESTIMATED FEE: " + estimatedFee);
 
-        // - calculate spc_fee (0.3 % of total amount)
-        let numAmount = Number(amount)
-        const spcFee : number = numAmount * 0.003;
-        const merchantAmount : number = +numAmount - +spcFee - +estimatedFee;
 
+        // - calculate spc_fee (0.3 % of total amount)
+        let numAmount = Number(amount) * 10**18
+        console.log("NUM AMOUNT using 18 decimals: " + numAmount);
+        const spcFee : number = numAmount * 0.003;
+
+        console.log("ESTIMATED SPRINT-CHECKOUT FEE: " + spcFee);
+
+        const merchantAmount : number = +numAmount - +spcFee - +estimatedFee;
+        console.log("MERCHANT AMOUNT (AMOUNT - SPC FEE - ESTIMATED FEE (harcoded right now to 100000)): " + merchantAmount);
+
+
+        let publicAddress;
         let strMerchantAmount = String(merchantAmount)
         // TODO get addresses from backend to use in the next transactions (merchant and sprintcheckout)
         axios.get('http://localhost:8080/checkout/v1/merchant_address?layer=' + layer + '&site_url=' + siteUrl)
         .then(res => {
           console.log("Merchant address (in layer " + layer + ") is " + res.data)
 
-          let publicAddress = res.data;
+          publicAddress = res.data;
 
         }).catch(err => console.log("Axios err: ", err))
 
+        await timeout(2000);
+
         const tx1 = {
           // from: "0xCE8a3215C76a645331eb58ce54E12DB6cD0cA73E",
-          to: "0xEDC3FB8eC1Bb8b10c956a67Ab783207cB6FD1c38",
+          to: "0x02BEd787c7af99E536f0A7f4E9dC38259e9ADF26",
+           //to: publicAddress as string,
           token: token as string,
           amount: strMerchantAmount as string,
         };
@@ -121,8 +137,9 @@ export default function ZkSyncComponent() {
         let strSpcFee = String(spcFee)
         const tx2 = {
           // from: "0xCE8a3215C76a645331eb58ce54E12DB6cD0cA73E",
-          to: "0xB401938D098e95ee1987b4E2674c8cd523afcc32",
-          token: "USDT",
+          // to: "0xB401938D098e95ee1987b4E2674c8cd523afcc32",
+          to: "0xEDC3FB8eC1Bb8b10c956a67Ab783207cB6FD1c38",
+          token: token as string,
           amount: strSpcFee as string,
         };
 
@@ -132,14 +149,36 @@ export default function ZkSyncComponent() {
         const receipts = await manager.wait(hashes, 'COMMIT');
         console.log(receipts);
 
+// TODO validate tx status (success or not)
+//         receipts.each {tx ->
+//          if(tx.success == false) {
+//           redirect to error page
+//
+//          }
+//          }
+
+
         // TODO navigate and send transaction result to another view (UI page)
         // Persist order (backend endpoint)
         // Render tx results and redirect (timeout or button) to woocommerce
         // Navigate to ORDER COMPLETE page in woocommerce passing the TX Receipt ID/Code (Callback)
         // Redirect with this params -> https://gripmonkeys.co.uk/checkout/order-received/7733/?key=wc_order_LLICPCA9WYf3s&spc_ref=AHD7$KD
-        window.location.replace(siteUrl + '/checkout/order-received/' + orderId + '/?key=' + woocommerceReference + '&spc_ref=' + 'FOO_CONST')
 
+      const wooCommerceKeys = `ck_8ec3f9dc6943e5d99b7a9e09eb46fef5670dd6cf:cs_c9134afb6072ecbf86395a08748cc238830137d0`;
+      const encodedToken = Buffer.from(wooCommerceKeys).toString('base64');
+      const headers = { 'Authorization': 'Basic '+ encodedToken };
 
+      axios.get('https://a.sprintgrowth.co.uk/wp-json/wc/v3/orders/' + orderId, { headers })
+      .then(res => {
+        console.log("Woocommerce order :" + res.data.id)
+        console.log("Woocommerce Currency :" + res.data.currency)
+      }).catch(err => console.log("Axios err: ", err))
+
+//         check update order
+
+//         if (udpate ok){
+//           window.location.replace(siteUrl + '/checkout/order-received/' + orderId + '/?key=' + woocommerceReference + '&spc_ref=' + 'FOO_CONST')
+//         }
 
       } catch (err) {
         console.error(err);
@@ -156,6 +195,10 @@ export default function ZkSyncComponent() {
 
     };
   });
+
+function timeout(delay: number) {
+    return new Promise( res => setTimeout(res, delay) );
+}
 
   return (
       <div>
