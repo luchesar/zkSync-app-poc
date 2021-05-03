@@ -33,12 +33,6 @@ export default function ZkSyncComponent() {
     console.log("URL params: " + orderId + " - " + woocommerceReference + " - " + layer + " - " + token + " - " + amount + " - " + storeCurrency + " - " + siteUrl);
     // const cancelTokenSource = CancelToken.source();
 
-      const wooCommerceKeys = `ck_8ec3f9dc6943e5d99b7a9e09eb46fef5670dd6cf:cs_c9134afb6072ecbf86395a08748cc238830137d0`;
-      const encodedToken = Buffer.from(wooCommerceKeys).toString('base64');
-      const headers = { 'Authorization': 'Basic '+ encodedToken };
-      const putData = { status: 'completed'};
-      const ref = axios.put('https://a.sprintgrowth.co.uk/wp-json/wc/v3/orders/' + orderId, putData, { headers });
-
       async function processTransaction() {
 
       //TODO ingest and process the data from the Woocommerce redirection order started
@@ -49,7 +43,7 @@ export default function ZkSyncComponent() {
 
         let tokenAmountToPay : number;
 
-        // TODO Recalculate token value (backend endpoint)
+        // Recalculate token value (backend endpoint)
         //axios.get('https://sprintcheckout-mvp.herokuapp.com/checkout/v1/tokens/rates?layer=' + layer
         axios.get('http://localhost:8080/checkout/v1/tokens/rates?layer=' + layer
         + '&amount=' + amount + '&store_currency=' + storeCurrency + '&site_url=' + siteUrl)
@@ -75,7 +69,7 @@ export default function ZkSyncComponent() {
         //   console.log(res.data);
         // })
 
-        // TODO Split payment (merchant, spc_fee, zksync_fee)
+        // Split payment (merchant, spc_fee, zksync_fee)
         //  - get zksync estimated fee (DONE)
         //  - calculate spc_fee (0.3 % of total amount)
         //  - merchant = total_amount - spc_fee - zksync_fee (corner case - unlock account)
@@ -157,27 +151,16 @@ export default function ZkSyncComponent() {
 //          }
 //          }
 
-
-        // TODO navigate and send transaction result to another view (UI page)
-        // Persist order (backend endpoint)
-        // Render tx results and redirect (timeout or button) to woocommerce
-        // Navigate to ORDER COMPLETE page in woocommerce passing the TX Receipt ID/Code (Callback)
-        // Redirect with this params -> https://gripmonkeys.co.uk/checkout/order-received/7733/?key=wc_order_LLICPCA9WYf3s&spc_ref=AHD7$KD
-
+//        TODO if (udpate ok){
       const wooCommerceKeys = `ck_8ec3f9dc6943e5d99b7a9e09eb46fef5670dd6cf:cs_c9134afb6072ecbf86395a08748cc238830137d0`;
       const encodedToken = Buffer.from(wooCommerceKeys).toString('base64');
       const headers = { 'Authorization': 'Basic '+ encodedToken };
+      const putData = { status: 'completed'};
+      const ref = axios.put('https://a.sprintgrowth.co.uk/wp-json/wc/v3/orders/' + orderId, putData, { headers });
 
-      axios.get('https://a.sprintgrowth.co.uk/wp-json/wc/v3/orders/' + orderId, { headers })
-      .then(res => {
-        console.log("Woocommerce order :" + res.data.id)
-        console.log("Woocommerce Currency :" + res.data.currency)
-      }).catch(err => console.log("Axios err: ", err))
-
-//         check update order
-
-//         if (udpate ok){
-//           window.location.replace(siteUrl + '/checkout/order-received/' + orderId + '/?key=' + woocommerceReference + '&spc_ref=' + 'FOO_CONST')
+      // Navigate to ORDER COMPLETE page in woocommerce passing the TX Receipt ID/Code (Callback)
+      // Redirect with this params -> https://gripmonkeys.co.uk/checkout/order-received/7733/?key=wc_order_LLICPCA9WYf3s&spc_ref=AHD7$KD
+      window.location.replace(siteUrl + '/checkout/order-received/' + orderId + '/?key=' + woocommerceReference + '&spc_ref=' + 'FOO_CONST')
 //         }
 
       } catch (err) {
