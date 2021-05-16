@@ -45,7 +45,7 @@ export default function ZkSyncComponent() {
 
         // Recalculate token value (backend endpoint)
         //axios.get('https://sprintcheckout-mvp.herokuapp.com/checkout/v1/tokens/rates?layer=' + layer
-        axios.get('http://localhost:8080/checkout/v1/tokens/rates?layer=' + layer
+        axios.get('https://sprintcheckout-mvp.herokuapp.com/checkout/v1/tokens/rates?layer=' + layer
         + '&amount=' + amount + '&store_currency=' + storeCurrency + '&site_url=' + siteUrl)
         .then(res => {
           // tokenRates = JSON.parse(res.data) as ITokenRates;
@@ -110,7 +110,7 @@ export default function ZkSyncComponent() {
         let publicAddress;
         let strMerchantAmount = String(merchantAmount)
         // TODO get addresses from backend to use in the next transactions (merchant and sprintcheckout)
-        axios.get('http://localhost:8080/checkout/v1/merchant_address?layer=' + layer + '&site_url=' + siteUrl)
+        axios.get('https://sprintcheckout-mvp.herokuapp.com/checkout/v1/merchant_address?layer=' + layer + '&site_url=' + siteUrl)
         .then(res => {
           console.log("Merchant address (in layer " + layer + ") is " + res.data)
 
