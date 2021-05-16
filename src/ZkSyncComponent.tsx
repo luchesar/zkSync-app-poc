@@ -118,15 +118,19 @@ export default function ZkSyncComponent() {
 
         }).catch(err => console.log("Axios err: ", err))
 
-        await timeout(2000);
+         await timeout(4000);
 
         const tx1 = {
           // from: "0xCE8a3215C76a645331eb58ce54E12DB6cD0cA73E",
           to: "0x02BEd787c7af99E536f0A7f4E9dC38259e9ADF26",
-           //to: publicAddress as string,
+//           to: publicAddress as string,
           token: token as string,
           amount: strMerchantAmount as string,
+          description: "Merchant"
         };
+
+        console.log("tx1");
+        console.log(tx1);
 
         let strSpcFee = String(spcFee)
         const tx2 = {
@@ -135,6 +139,7 @@ export default function ZkSyncComponent() {
           to: "0xEDC3FB8eC1Bb8b10c956a67Ab783207cB6FD1c38",
           token: token as string,
           amount: strSpcFee as string,
+          description: "Sprintcheckout fee"
         };
 
         const transactions = [tx1, tx2];
