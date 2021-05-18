@@ -4,6 +4,13 @@ import {CheckoutManager} from 'zksync-checkout'
 // import {zkSyncBatchCheckout} from 'zksync-checkout'
 type TokenLike = string;
 
+interface TokenDecimalsObj {
+  id: number;
+  address: string;
+  symbol: string;
+  decimals: number;
+}
+
 export default function ZkSyncComponent() {
   const [text, setText] = useState("");
   const componentIsMounted = useRef(true);
@@ -41,27 +48,39 @@ export default function ZkSyncComponent() {
         console.log("Inside process transaction async call");
         const manager = new CheckoutManager('rinkeby');
 
-        let tokenAmountToPay : number;
+//         let tokenAmountToPay : number;
 
         // Recalculate token value (backend endpoint)
         //axios.get('https://sprintcheckout-mvp.herokuapp.com/checkout/v1/tokens/rates?layer=' + layer
-        axios.get('https://sprintcheckout-mvp.herokuapp.com/checkout/v1/tokens/rates?layer=' + layer
-        + '&amount=' + amount + '&store_currency=' + storeCurrency + '&site_url=' + siteUrl)
-        .then(res => {
-          // tokenRates = JSON.parse(res.data) as ITokenRates;
-          console.log(res.data)
-          var tokenValue = Object.entries(res.data.tokenPrices).filter( function ([key, value]) {
+        var tokenAmountToPayResponse = await axios.get('https://sprintcheckout-mvp.herokuapp.com/checkout/v1/tokens/rates?layer=' + layer
+                                                      + '&amount=' + amount + '&store_currency=' + storeCurrency + '&site_url=' + siteUrl)
+          var tokenValue = Object.entries(tokenAmountToPayResponse.data.tokenPrices).filter( function ([key, value]) {
             if(key == token?.toLowerCase()) {
               return value;
             }
           });
-          console.log("Amount of "+ amount + " " + storeCurrency + " equals to " + tokenValue[0][1] + " " + token)
-          tokenAmountToPay = tokenValue[0][1] as number
 
-        }).then(res => {
+          var tokenAmountToPay = tokenValue[0][1] as number
+          console.log("Amount to pay in token " + tokenAmountToPay);
 
-        }
-        ).catch(err => console.log("Axios err: ", err))
+
+//         axios.get('https://sprintcheckout-mvp.herokuapp.com/checkout/v1/tokens/rates?layer=' + layer
+//         + '&amount=' + amount + '&store_currency=' + storeCurrency + '&site_url=' + siteUrl)
+//         .then(res => {
+//           // tokenRates = JSON.parse(res.data) as ITokenRates;
+//           console.log(res.data)
+//           var tokenValue = Object.entries(res.data.tokenPrices).filter( function ([key, value]) {
+//             if(key == token?.toLowerCase()) {
+//               return value;
+//             }
+//           });
+//           console.log("Amount of "+ amount + " " + storeCurrency + " equals to " + tokenValue[0][1] + " " + token)
+//           tokenAmountToPay = tokenValue[0][1] as number
+//
+//         }).then(res => {
+//
+//         }
+//         ).catch(err => console.log("Axios err: ", err))
 
         // axios.post(`https://jsonplaceholder.typicode.com/users`, { user })
         // .then(res => {
@@ -96,15 +115,30 @@ export default function ZkSyncComponent() {
         console.log("ESTIMATED FEE: " + estimatedFee);
 
 
-        // - calculate spc_fee (0.3 % of total amount)
-        let numAmount = Number(amount) * 10**18
-        console.log("NUM AMOUNT using 18 decimals: " + numAmount);
-        const spcFee : number = numAmount * 0.003;
+        const tokenDecimalObjs = await axios.get<TokenDecimalsObj[]>('https://api.zksync.io/api/v0.1/tokens');
+        console.log(tokenDecimalObjs.data);
 
-        console.log("ESTIMATED SPRINT-CHECKOUT FEE: " + spcFee);
+        var selectedTokenDecimal = tokenDecimalObjs.data.find(element => {
+            if (element.symbol == token) {
+                console.log("Selecte token " + element.symbol + " Decimals = " + element.decimals);
+                return element;
+            }
+        });
 
-        const merchantAmount : number = +numAmount - +spcFee - +estimatedFee;
-        console.log("MERCHANT AMOUNT (AMOUNT - SPC FEE - ESTIMATED FEE (harcoded right now to 100000)): " + merchantAmount);
+        var numAmount: number;
+        if(selectedTokenDecimal){
+          // - calculate spc_fee (0.3 % of total amount)
+          numAmount = Number(tokenAmountToPay) * 10**selectedTokenDecimal.decimals
+          numAmount = Math.ceil(numAmount);
+          console.log("NUM AMOUNT using " + selectedTokenDecimal.decimals + " decimals: " + numAmount);
+          var spcFee : number = numAmount * 0.003;
+          spcFee = Math.ceil(spcFee);
+
+          console.log("ESTIMATED SPRINT-CHECKOUT FEE: " + spcFee);
+
+          const merchantAmount : number = +numAmount - +spcFee - +estimatedFee;
+          console.log("MERCHANT AMOUNT (AMOUNT - SPC FEE - ESTIMATED FEE): " + merchantAmount);
+
 
 
         let publicAddress;
@@ -148,6 +182,7 @@ export default function ZkSyncComponent() {
         const receipts = await manager.wait(hashes, 'COMMIT');
         console.log(receipts);
 
+}
 // TODO validate tx status (success or not)
 //         receipts.each {tx ->
 //          if(tx.success == false) {
