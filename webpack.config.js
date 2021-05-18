@@ -1,4 +1,4 @@
-var path = require('path');
+//var path = require('path');
 
 //module.exports = {
 //  //...
@@ -11,7 +11,7 @@ var path = require('path');
 
 //
 //
-module.exports = {
+{
   devServer: {
       headers: {
         "Access-Control-Allow-Origin": "*",
